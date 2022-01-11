@@ -373,6 +373,73 @@ Value ReadExternalArrayBuffer(const CallbackInfo& args) {
 }
 
 /**
+ * Creates an ArrayBuffer from the given address without allocating new memory,
+ * using napi_create_external_arraybuffer.
+ *
+ * args[0] - Number/String - the memory address
+ * args[1] - Number - the length in bytes of the returned ArrayBuffer instance
+ */
+
+Value BgraToRgbaAndReadExternalAB(const CallbackInfo& args) {
+  Env env = args.Env();
+  Value in = args[0];
+  int64_t address;
+  if (in.IsNumber()) {
+    address = in.As<Number>();
+  } else if (in.IsString()) {
+    char* endptr;
+    char* str;
+    int base = 0;
+    std::string _str = in.As<String>();
+    str = &_str[0];
+
+    errno = 0;     /* To distinguish success/failure after call */
+    address = strtoll(str, &endptr, base);
+
+    if (endptr == str) {
+      throw TypeError::New(env, "BgraToRgbaAndReadExternalAB: no digits we found in input String");
+    } else  if (errno == ERANGE && (address == INT64_MAX || address == INT64_MIN)) {
+      throw TypeError::New(env, "BgraToRgbaAndReadExternalAB: input String numerical value out of range");
+    } else if (errno != 0 && address == 0) {
+      char errmsg[200];
+      snprintf(errmsg, sizeof(errmsg), "BgraToRgbaAndReadExternalAB: %s", strerror(errno));
+      throw TypeError::New(env, errmsg);
+    }
+  }
+  int64_t length = args[1].ToNumber();  
+
+  /*
+    // 将BGRA 转为 RGBA
+  // 1090p的frameDataLength为8294400，循环2073600次
+  // for (let pos = 0; pos < frameDataLength; pos += 4) {
+  for (let pos = frameDataLength; pos -= 4; ) {
+    let b = buffer[pos]
+    let rpos = pos + 2
+    // r
+    buffer[pos] = buffer[rpos]    
+    buffer[rpos] = b
+  }
+  // 倒序循环会漏掉第一个像素
+  let b = buffer[0]
+  buffer[0] = buffer[2]    
+  buffer[2] = b
+  */
+  unsigned char* data = (unsigned char*) address;
+  int pos = (int) length - 4;
+  int b;
+  int rpos;
+  while (pos >= 0) {
+    b = data[pos];
+    rpos = pos + 2;
+    data[pos] = data[rpos];
+    data[rpos] = b;
+    pos -= 4;
+  }
+
+  return ArrayBuffer::New(env, (void*) address, (size_t) length);
+}
+
+/**
  * Writes the memory address of the "input" buffer (and optional offset) to the
  * specified "buf" buffer and offset. Essentially making "buf" hold a reference
  * to the "input" Buffer.
@@ -739,6 +806,7 @@ Object Init(Env env, Object exports) {
   exports["_reinterpret"] = Function::New(env, ReinterpretBuffer);
   exports["_reinterpretUntilZeros"] = Function::New(env, ReinterpretBufferUntilZeros);
   exports["readExternalArrayBuffer"] = Function::New(env, ReadExternalArrayBuffer);
+  exports["bgraToRgbaAndReadExternalAB"] = Function::New(env, BgraToRgbaAndReadExternalAB);
   return exports;
 }
 

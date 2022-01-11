@@ -21,7 +21,7 @@
     "64",
     "napi"
   ],
-  "version": "3.0.4",
+  "version": "3.0.5",
   "license": "MIT",
   "author": "Luxel Tao (https://github.com/luxel)",
   "repository": {
@@ -32,10 +32,10 @@
   "scripts": {
     "docs": "node docs/compile",
     "test": "nyc mocha --expose-gc",
+    "test-ab": "nyc mocha --expose-gc test/external_arraybuffer.js",
     "install": "node-gyp-build",
     "prebuild": "prebuildify --napi --tag-armv",
-    "prebuild-node14": "prebuildify --napi --tag-armv --target 14.17.6",
-    "prepack": "prebuildify-ci download && ([ $(ls prebuilds | wc -l) = '5' ] || (echo 'Some prebuilds are missing'; exit 1))"
+    "prebuild-node14": "prebuildify --napi --tag-armv --target 14.17.6"
   },
   "dependencies": {
     "debug": "^4.1.1",
